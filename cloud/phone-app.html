@@ -12,8 +12,9 @@
       align-items: center; justify-content: center; overflow: hidden; user-select: none;
     }
     #status {
-      position: fixed; top: 16px; left: 0; right: 0; text-align: center;
-      font-size: 12px; opacity: 0.5; letter-spacing: 0.05em; text-transform: uppercase;
+      position: fixed; top: 8px; left: 0; right: 0; text-align: center; z-index: 6;
+      font-size: 12px; opacity: 0.75; letter-spacing: 0.05em; text-transform: uppercase;
+      text-shadow: 0 1px 6px rgba(0,0,0,0.9);
     }
     #aim-hint {
       position: fixed; top: 44px; left: 0; right: 0; text-align: center;
@@ -29,7 +30,17 @@
       transition: transform 0.12s, opacity 0.2s; opacity: 0.25;
     }
     #reticle.active { opacity: 1; }
-    #reticle-inner { width: 14px; height: 14px; border-radius: 50%; background: white; }
+    #reticle-inner {
+      position: relative; width: 34px; height: 34px; color: white; background: none;
+    }
+    #reticle-inner::before {
+      content: ''; position: absolute; left: 50%; top: 0; bottom: 0; width: 2px;
+      transform: translateX(-50%); background: currentColor;
+    }
+    #reticle-inner::after {
+      content: ''; position: absolute; top: 50%; left: 0; right: 0; height: 2px;
+      transform: translateY(-50%); background: currentColor;
+    }
     #reticle.flash { transform: scale(1.35); opacity: 1; }
     .hud-box {
       border: 1.5px solid rgba(255,178,70,0.9); color: #ffd396;
@@ -39,23 +50,22 @@
       text-shadow: 0 0 8px rgba(255,170,60,0.5);
     }
     #claim-top {
-      position: fixed; top: 44px; left: 50%; transform: translateX(-50%);
-      padding: 13px 30px; font-size: 14px; z-index: 5; display: none; cursor: pointer;
+      position: fixed; top: 16.5%; left: 50%; transform: translateX(-50%);
+      padding: 12px 28px; font-size: 14px; z-index: 5; display: none; cursor: pointer;
+      color: #fff; border-color: rgba(255,255,255,0.92);
+      text-shadow: 0 0 8px rgba(255,255,255,0.45);
+      box-shadow: 0 0 14px rgba(255,255,255,0.18), inset 0 0 12px rgba(255,255,255,0.06);
     }
     #claim-top.show { display: block; }
-    #claim-top:active { background: rgba(255,170,60,0.2); }
-    #tap-prompt {
-      position: fixed; bottom: 26px; left: 50%; transform: translateX(-50%);
-      padding: 10px 22px; font-size: 11px; z-index: 4; pointer-events: none;
-      white-space: nowrap;
-    }
+    #claim-top:active { background: rgba(255,255,255,0.18); }
     #calib-hint {
       font-size: 13px; opacity: 0.6; max-width: 300px; text-align: center;
       line-height: 1.5; padding: 0 20px;
     }
     #calibrate-btn {
-      padding: 13px 30px; border-radius: 999px; border: 1.5px solid rgba(255,255,255,0.3);
-      background: transparent; color: white; font-size: 15px; cursor: pointer;
+      position: fixed; top: 52%; left: 50%; transform: translateX(-50%); z-index: 5;
+      padding: 13px 30px; border-radius: 999px; border: 1.5px solid rgba(255,255,255,0.4);
+      background: rgba(8,10,16,0.45); color: white; font-size: 15px; cursor: pointer;
     }
     #calibrate-btn:active { background: rgba(255,255,255,0.1); }
     #name-panel {
@@ -148,8 +158,7 @@
   <div id="status">Player — · Aim &amp; Tap</div>
   <div id="aim-hint"></div>
   <div id="reticle"><div id="reticle-inner"></div></div>
-  <div id="tap-prompt" class="hud-box">Tap anywhere to claim</div>
-  <div id="calib-hint">① Aim your phone at the marker at the front of the room, then calibrate</div>
+  <div id="calib-hint" style="display:none"></div>
   <button id="calibrate-btn">⊕ Calibrate aim</button>
 </div>
 
@@ -179,7 +188,6 @@
 <button id="claim-top" class="hud-box">Claim Planet</button>
 
 <div id="toast"></div>
-<div id="dbg" style="position:fixed;bottom:8px;left:8px;font-size:12px;font-family:monospace;opacity:0.7;color:#0ff;z-index:50"></div>
 
 <script>
 let ws = null, playerId = null, playerColor = 'white';
@@ -327,7 +335,7 @@ function connectWebSocket() {
     if (msg.type === 'ASSIGN') {
       playerId = msg.playerId; playerColor = msg.color;
       reticle.style.borderColor = playerColor;
-      reticleInner.style.background = playerColor;
+      reticleInner.style.color = playerColor;
       namePanel.style.color = playerColor;
       document.body.style.background = `radial-gradient(ellipse at center, ${playerColor}18 0%, #0a0a0f 70%)`;
       statusEl.textContent = `Player ${playerId} · Aim & Tap`;
@@ -368,7 +376,6 @@ function startSendingAim() {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
     ws.send(JSON.stringify({ type: 'AIM', yaw: (360 - getAdjustedYaw()) % 360, pitch: getAdjustedPitch(),
                              vyaw: -vAlpha, vpitch: vPitch }));  // vyaw negated: yaw is mirrored above
-    document.getElementById('dbg').textContent = 'yaw ' + getAdjustedYaw().toFixed(0) + '  pitch ' + getAdjustedPitch().toFixed(0) + '  (cal:' + (calibratedPitch===null?'NO':'yes') + ')';
   }, 50);
 }
 function stopSendingAim() { clearInterval(aimInterval); }
