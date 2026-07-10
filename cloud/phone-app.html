@@ -12,9 +12,9 @@
       align-items: center; justify-content: center; overflow: hidden; user-select: none;
     }
     #status {
-      position: fixed; top: 8px; left: 0; right: 0; text-align: center; z-index: 6;
-      font-size: 12px; opacity: 0.75; letter-spacing: 0.05em; text-transform: uppercase;
-      text-shadow: 0 1px 6px rgba(0,0,0,0.9);
+      position: fixed; top: calc(16.5% + 54px); left: 0; right: 0; text-align: center; z-index: 6;
+      font-size: 12px; opacity: 0.85; letter-spacing: 0.14em; text-transform: uppercase;
+      text-shadow: 0 1px 6px rgba(0,0,0,0.9); color: #cfeeff;
     }
     #aim-hint {
       position: fixed; top: 44px; left: 0; right: 0; text-align: center;
@@ -25,9 +25,10 @@
       align-items: center; justify-content: center; gap: 36px;
     }
     #reticle {
+      position: fixed; top: 35%; left: 50%; transform: translate(-50%, -50%);
       width: 130px; height: 130px; border-radius: 50%; border: 3px solid white;
       display: flex; align-items: center; justify-content: center;
-      transition: transform 0.12s, opacity 0.2s; opacity: 0.25;
+      transition: transform 0.12s, opacity 0.2s; opacity: 0.25; z-index: 4;
     }
     #reticle.active { opacity: 1; }
     #reticle-inner {
@@ -41,45 +42,46 @@
       content: ''; position: absolute; top: 50%; left: 0; right: 0; height: 2px;
       transform: translateY(-50%); background: currentColor;
     }
-    #reticle.flash { transform: scale(1.35); opacity: 1; }
+    #reticle.flash { transform: translate(-50%, -50%) scale(1.35); opacity: 1; }
     .hud-box {
-      border: 1.5px solid rgba(255,178,70,0.9); color: #ffd396;
-      background: rgba(14,9,2,0.55); border-radius: 6px;
+      border: 1.5px solid rgba(90,220,255,0.9); color: #9ceaff;
+      background: rgba(3,10,16,0.6);
       text-transform: uppercase; letter-spacing: 0.14em; font-weight: 600;
-      box-shadow: 0 0 14px rgba(255,160,40,0.25), inset 0 0 12px rgba(255,160,40,0.08);
-      text-shadow: 0 0 8px rgba(255,170,60,0.5);
+      box-shadow: 0 0 14px rgba(80,210,255,0.25), inset 0 0 12px rgba(80,210,255,0.08);
+      text-shadow: 0 0 8px rgba(120,225,255,0.55);
     }
     #claim-top {
       position: fixed; top: 16.5%; left: 50%; transform: translateX(-50%);
       padding: 12px 28px; font-size: 14px; z-index: 5; display: none; cursor: pointer;
-      color: #fff; border-color: rgba(255,255,255,0.92);
-      text-shadow: 0 0 8px rgba(255,255,255,0.45);
-      box-shadow: 0 0 14px rgba(255,255,255,0.18), inset 0 0 12px rgba(255,255,255,0.06);
     }
     #claim-top.show { display: block; }
-    #claim-top:active { background: rgba(255,255,255,0.18); }
+    #claim-top:active { background: rgba(90,220,255,0.2); }
     #calib-hint {
       font-size: 13px; opacity: 0.6; max-width: 300px; text-align: center;
       line-height: 1.5; padding: 0 20px;
     }
     #calibrate-btn {
       position: fixed; top: 52%; left: 50%; transform: translateX(-50%); z-index: 5;
-      padding: 13px 30px; border-radius: 999px; border: 1.5px solid rgba(255,255,255,0.4);
-      background: rgba(8,10,16,0.45); color: white; font-size: 15px; cursor: pointer;
+      padding: 12px 28px; font-size: 14px; cursor: pointer;
     }
-    #calibrate-btn:active { background: rgba(255,255,255,0.1); }
+    #calibrate-btn:active { background: rgba(90,220,255,0.2); }
     #name-panel {
       position: fixed; inset: 0; background: transparent;
       display: none; flex-direction: column; align-items: center; justify-content: flex-end;
-      padding: 20px 14px 7%; z-index: 20;
+      padding: 0 12px 2.5%; z-index: 20;
     }
     #name-panel.open { display: flex; }
     #name-box {
-      width: 100%; max-width: 390px; display: flex; flex-direction: column;
-      align-items: center; gap: 18px; padding: 24px 18px;
-      background: rgba(4,7,13,0.93); border: 1.5px solid rgba(90,205,255,0.85);
-      border-radius: 18px;
+      width: 100%; max-width: 430px; min-height: 38vh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 18px; padding: 24px 18px;
+      background: rgba(3,8,14,0.94); border: 1.5px solid rgba(90,220,255,0.9);
       box-shadow: 0 0 20px rgba(90,205,255,0.25), inset 0 0 16px rgba(90,205,255,0.06);
+    }
+    #claim-btn { text-transform: uppercase; letter-spacing: 0.1em; }
+    #name-box, #name-input, .tier-btn, #claim-btn, .hud-box {
+      border-radius: 0;
+      clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
     }
     #name-target {
       font-size: 14px; opacity: 0.65; text-align: center;
@@ -166,7 +168,7 @@
   <div id="aim-hint"></div>
   <div id="reticle"><div id="reticle-inner"></div></div>
   <div id="calib-hint" style="display:none"></div>
-  <button id="calibrate-btn">⊕ Calibrate aim</button>
+  <button id="calibrate-btn" class="hud-box">Calibrate Aim</button>
 </div>
 
 <div id="name-panel">
@@ -310,7 +312,7 @@ calibrateBtn.addEventListener('click', () => {
       calibratedPitch = pitchSamples.reduce((a, b) => a + b, 0) / pitchSamples.length;
       calibrating = false;
       reticle.classList.remove('flash');
-      calibrateBtn.textContent = '⊕ Re-calibrate';
+      calibrateBtn.textContent = 'Re-calibrate';
       calibHint.style.display = 'none';
       toast('Aim calibrated');
     }
