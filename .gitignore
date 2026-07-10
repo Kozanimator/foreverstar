@@ -1,0 +1,14 @@
+# secrets - never publish
+*.pem
+*.key
+cloud_url.txt
+
+# local junk
+node_modules/
+__pycache__/
+pylibs/
+matdbg.txt
+*.bak
+starfield.png
+textures/
+cloud/claims.json
