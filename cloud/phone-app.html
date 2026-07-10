@@ -69,11 +69,18 @@
     }
     #calibrate-btn:active { background: rgba(255,255,255,0.1); }
     #name-panel {
-      position: fixed; inset: 0; background: rgba(6,6,12,0.92); backdrop-filter: blur(6px);
-      display: none; flex-direction: column; align-items: center; justify-content: center;
-      gap: 22px; padding: 32px; z-index: 20;
+      position: fixed; inset: 0; background: transparent;
+      display: none; flex-direction: column; align-items: center; justify-content: flex-end;
+      padding: 20px 14px 7%; z-index: 20;
     }
     #name-panel.open { display: flex; }
+    #name-box {
+      width: 100%; max-width: 390px; display: flex; flex-direction: column;
+      align-items: center; gap: 18px; padding: 24px 18px;
+      background: rgba(4,7,13,0.93); border: 1.5px solid rgba(90,205,255,0.85);
+      border-radius: 18px;
+      box-shadow: 0 0 20px rgba(90,205,255,0.25), inset 0 0 16px rgba(90,205,255,0.06);
+    }
     #name-target {
       font-size: 14px; opacity: 0.65; text-align: center;
       text-transform: uppercase; letter-spacing: 0.06em;
@@ -163,15 +170,17 @@
 </div>
 
 <div id="name-panel">
-  <div id="name-target">Name this planet</div>
-  <input id="name-input" maxlength="8" placeholder="8 letters" autocomplete="off"
-         autocapitalize="characters" spellcheck="false" style="text-transform:uppercase">
-  <div id="tier-row">
-    <button class="tier-btn selected" data-tier="forever">Forever<small>stays every visit</small></button>
-    <button class="tier-btn" data-tier="once">Just once<small>fades after today</small></button>
+  <div id="name-box">
+    <div id="name-target">Name</div>
+    <input id="name-input" maxlength="8" placeholder="8 letters" autocomplete="off"
+           autocapitalize="characters" spellcheck="false" style="text-transform:uppercase">
+    <div id="tier-row">
+      <button class="tier-btn selected" data-tier="forever">Forever<small>stays every visit</small></button>
+      <button class="tier-btn" data-tier="once">Just once<small>fades after today</small></button>
+    </div>
+    <button id="claim-btn">Claim this planet</button>
+    <button id="cancel-btn">Cancel</button>
   </div>
-  <button id="claim-btn">Claim this planet</button>
-  <button id="cancel-btn">Cancel</button>
 </div>
 
 <div id="dossier">
@@ -395,7 +404,7 @@ function openNamePanel() {
   naming = true;
   if (currentTarget.claimed && currentTarget.name) nameTarget.textContent = `“${currentTarget.name}” is taken — pick another planet`;
   else if (currentTarget.name) nameTarget.textContent = `Currently “${currentTarget.name}” — rename it`;
-  else nameTarget.textContent = 'Name this planet';
+  else nameTarget.textContent = 'Name';
   namePanel.classList.add('open');
   setTimeout(() => nameInput.focus(), 50);
 }
