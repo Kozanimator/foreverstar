@@ -33,6 +33,15 @@ const server = http.createServer((req, res) => {
   } else if (req.method === 'GET' && req.url === '/health') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ ok: true, bridgeOnline: !!bridge, players: Object.keys(players).length }));
+  } else if (req.method === 'GET' && req.url === '/cards.json') {
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'max-age=300' });
+    res.end(fs.readFileSync(path.join(__dirname, 'cards.json')));
+  } else if (req.method === 'GET' && /^\/cards\/\d+\.jpg$/.test(req.url)) {
+    const f = path.join(__dirname, req.url);
+    if (fs.existsSync(f)) {
+      res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Cache-Control': 'max-age=86400' });
+      res.end(fs.readFileSync(f));
+    } else { res.writeHead(404); res.end(); }
   } else {
     res.writeHead(404); res.end();
   }
@@ -43,7 +52,13 @@ const wss = new WebSocket.Server({ server });
 let bridge = null;              // the installation PC (one at a time)
 const players = {};             // playerId -> phone ws
 const pendingClaims = {};       // playerId -> {name, tier} awaiting UE verdict
-let nextPlayerId = 1;
+
+// always hand out the lowest free slot (1..MAX_PLAYERS) so Unreal's
+// per-player selectors keep working across phone reloads
+function freePlayerId() {
+  for (let i = 1; i <= MAX_PLAYERS; i++) if (!players[i]) return i;
+  return null;
+}
 
 function toBridge(obj) {
   if (bridge && bridge.readyState === WebSocket.OPEN) bridge.send(JSON.stringify(obj));
@@ -84,7 +99,7 @@ wss.on('connection', (ws) => {
 
     if (role === 'bridge') {
       // --- messages coming UP from the installation ---
-      if (msg.type === 'TARGET') toPlayer(msg.playerId, { type: 'TARGET', name: msg.name, claimed: msg.claimed });
+      if (msg.type === 'TARGET') toPlayer(msg.playerId, { type: 'TARGET', name: msg.name, claimed: msg.claimed, cardId: msg.cardId || 0 });
       if (msg.type === 'CLAIM_RESULT') {
         toPlayer(msg.playerId, { type: 'CLAIM_RESULT', success: msg.success });
         const pc = pendingClaims[msg.playerId];
@@ -101,10 +116,10 @@ wss.on('connection', (ws) => {
     // --- phone messages ---
     if (!joined) {
       // first message from a phone joins it
-      if (Object.keys(players).length >= MAX_PLAYERS) {
+      playerId = freePlayerId();
+      if (playerId === null) {
         ws.send(JSON.stringify({ type: 'FULL' })); ws.close(); return;
       }
-      playerId = nextPlayerId++;
       players[playerId] = ws;
       joined = true;
       const color = PLAYER_COLORS[(playerId - 1) % PLAYER_COLORS.length];

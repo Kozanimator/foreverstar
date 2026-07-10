@@ -88,6 +88,24 @@
       color: black; font-size: 17px; font-weight: 600; cursor: pointer;
     }
     #waiting-screen { text-align: center; opacity: 0.5; font-size: 15px; padding: 32px; line-height: 1.7; }
+    #dossier {
+      position: fixed; top: 66px; left: 12px; right: 12px; z-index: 10;
+      display: none; gap: 12px; align-items: stretch;
+      background: rgba(10,14,22,0.82); border: 1px solid rgba(80,220,255,0.35);
+      border-radius: 16px; padding: 10px; backdrop-filter: blur(8px);
+      pointer-events: none;
+    }
+    #dossier.show { display: flex; }
+    #dossier img {
+      width: 86px; border-radius: 10px; object-fit: cover; flex-shrink: 0;
+      border: 1px solid rgba(80,220,255,0.25);
+    }
+    #dossier .d-body { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+    #dossier .d-name { font-size: 17px; font-weight: 700; color: #7ee6ff; letter-spacing: 0.04em; }
+    #dossier .d-type { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.6; margin-bottom: 3px; }
+    #dossier .d-row  { font-size: 11.5px; line-height: 1.45; opacity: 0.85; }
+    #dossier .d-row b { color: #7ee6ff; font-weight: 600; }
+    #dossier .d-owner { font-size: 11px; margin-top: 3px; color: #ffd27e; }
   </style>
 </head>
 <body>
@@ -122,6 +140,17 @@
   <button id="cancel-btn">Cancel</button>
 </div>
 
+<div id="dossier">
+  <img id="d-img" alt="" onerror="this.style.display='none'">
+  <div class="d-body">
+    <div class="d-name" id="d-name"></div>
+    <div class="d-type" id="d-type"></div>
+    <div class="d-row" id="d-life"></div>
+    <div class="d-row" id="d-res"></div>
+    <div class="d-owner" id="d-owner"></div>
+  </div>
+</div>
+
 <div id="toast"></div>
 <div id="dbg" style="position:fixed;bottom:8px;left:8px;font-size:12px;font-family:monospace;opacity:0.7;color:#0ff;z-index:50"></div>
 
@@ -130,6 +159,24 @@ let ws = null, playerId = null, playerColor = 'white';
 let calibratedAlpha = null, calibratedPitch = null, lastAlpha = 0, lastPitch = 0, aimInterval = null;
 let selectedTier = 'forever', naming = false, roomWasOffline = false;
 let currentTarget = { name: '', claimed: false };
+let cards = {};   // cardId -> {name, type, life, resources, features}
+fetch('/cards.json').then(r => r.json())
+  .then(list => { for (const c of list) cards[c.id] = c; })
+  .catch(() => {});
+function showDossier(cardId, ownerName) {
+  const d = document.getElementById('dossier');
+  const c = cards[cardId];
+  if (!c) { d.classList.remove('show'); return; }
+  const img = document.getElementById('d-img');
+  img.style.display = '';
+  img.src = '/cards/' + cardId + '.jpg';
+  document.getElementById('d-name').textContent = c.name;
+  document.getElementById('d-type').textContent = c.type;
+  document.getElementById('d-life').innerHTML = '<b>Life</b> ' + c.life;
+  document.getElementById('d-res').innerHTML  = '<b>Resources</b> ' + c.resources;
+  document.getElementById('d-owner').textContent = ownerName ? '✦ Claimed by ' + ownerName : '';
+  d.classList.add('show');
+}
 
 const permissionScreen = document.getElementById('permission-screen');
 const waitingScreen    = document.getElementById('waiting-screen');
@@ -260,10 +307,11 @@ function connectWebSocket() {
     if (msg.type === 'TARGET') {
       currentTarget = { name: msg.name || '', claimed: !!msg.claimed };
       if (!naming) {
-        if (!currentTarget.name) aimHint.textContent = 'Aiming at an unnamed planet';
+        if (!currentTarget.name) aimHint.textContent = '';
         else aimHint.textContent = currentTarget.claimed
           ? `“${currentTarget.name}” — taken forever` : `“${currentTarget.name}”`;
       }
+      if (msg.cardId) showDossier(msg.cardId, currentTarget.claimed ? currentTarget.name : '');
     }
     if (msg.type === 'CLAIM_RESULT') {
       if (msg.success) { toast('✦ Planet named ✦'); closeNamePanel(); }
