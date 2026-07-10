@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <title>ForeverStar</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: system-ui, sans-serif; background: #0a0a0f; color: white;
+      height: 100dvh; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; overflow: hidden; user-select: none;
+    }
+    #status {
+      position: fixed; top: 16px; left: 0; right: 0; text-align: center;
+      font-size: 12px; opacity: 0.5; letter-spacing: 0.05em; text-transform: uppercase;
+    }
+    #aim-hint {
+      position: fixed; top: 44px; left: 0; right: 0; text-align: center;
+      font-size: 15px; font-weight: 600; opacity: 0.85; transition: opacity 0.2s; padding: 0 24px;
+    }
+    #tap-area {
+      width: 100%; height: 100%; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 36px;
+    }
+    #reticle {
+      width: 130px; height: 130px; border-radius: 50%; border: 3px solid white;
+      display: flex; align-items: center; justify-content: center;
+      transition: transform 0.12s, opacity 0.2s; opacity: 0.25;
+    }
+    #reticle.active { opacity: 1; }
+    #reticle-inner { width: 14px; height: 14px; border-radius: 50%; background: white; }
+    #reticle.flash { transform: scale(1.35); opacity: 1; }
+    #tap-prompt { font-size: 13px; opacity: 0.45; letter-spacing: 0.03em; }
+    #calib-hint {
+      font-size: 13px; opacity: 0.6; max-width: 300px; text-align: center;
+      line-height: 1.5; padding: 0 20px;
+    }
+    #calibrate-btn {
+      padding: 13px 30px; border-radius: 999px; border: 1.5px solid rgba(255,255,255,0.3);
+      background: transparent; color: white; font-size: 15px; cursor: pointer;
+    }
+    #calibrate-btn:active { background: rgba(255,255,255,0.1); }
+    #name-panel {
+      position: fixed; inset: 0; background: rgba(6,6,12,0.92); backdrop-filter: blur(6px);
+      display: none; flex-direction: column; align-items: center; justify-content: center;
+      gap: 22px; padding: 32px; z-index: 20;
+    }
+    #name-panel.open { display: flex; }
+    #name-target {
+      font-size: 14px; opacity: 0.65; text-align: center;
+      text-transform: uppercase; letter-spacing: 0.06em;
+    }
+    #name-input {
+      width: 100%; max-width: 340px; padding: 18px 20px; border-radius: 16px;
+      border: 2px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.05);
+      color: white; font-size: 22px; text-align: center; outline: none;
+    }
+    #name-input:focus { border-color: currentColor; }
+    #tier-row { display: flex; gap: 12px; width: 100%; max-width: 340px; }
+    .tier-btn {
+      flex: 1; padding: 16px 10px; border-radius: 14px; border: 2px solid rgba(255,255,255,0.15);
+      background: transparent; color: white; font-size: 15px; font-weight: 600; cursor: pointer;
+    }
+    .tier-btn small { display: block; font-size: 11px; font-weight: 400; opacity: 0.55; margin-top: 4px; }
+    .tier-btn.selected { border-color: currentColor; background: rgba(255,255,255,0.08); }
+    #claim-btn {
+      width: 100%; max-width: 340px; padding: 18px; border-radius: 999px; border: none;
+      background: white; color: black; font-size: 17px; font-weight: 700; cursor: pointer;
+    }
+    #claim-btn:disabled { opacity: 0.4; }
+    #cancel-btn { background: none; border: none; color: white; opacity: 0.5; font-size: 15px; padding: 6px; cursor: pointer; }
+    #toast {
+      position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%) translateY(20px);
+      background: rgba(255,255,255,0.12); padding: 14px 26px; border-radius: 999px;
+      font-size: 15px; font-weight: 600; opacity: 0; transition: opacity 0.25s, transform 0.25s;
+      z-index: 30; pointer-events: none; white-space: nowrap;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    #permission-screen {
+      display: flex; flex-direction: column; align-items: center; gap: 24px;
+      padding: 48px 32px; text-align: center;
+    }
+    #permission-screen h1 { font-size: 26px; font-weight: 700; }
+    #permission-screen p  { font-size: 15px; opacity: 0.6; line-height: 1.7; }
+    #allow-btn {
+      padding: 17px 44px; border-radius: 999px; border: none; background: white;
+      color: black; font-size: 17px; font-weight: 600; cursor: pointer;
+    }
+    #waiting-screen { text-align: center; opacity: 0.5; font-size: 15px; padding: 32px; line-height: 1.7; }
+  </style>
+</head>
+<body>
+
+<div id="permission-screen">
+  <div style="font-size:56px">🪐</div>
+  <h1>ForeverStar</h1>
+  <p>Point your phone at the room to aim at a planet. Tap to name it and make it yours.</p>
+  <button id="allow-btn">Allow Motion Access</button>
+</div>
+
+<div id="waiting-screen" style="display:none">Connecting to room…</div>
+
+<div id="tap-area" style="display:none">
+  <div id="status">Player — · Aim &amp; Tap</div>
+  <div id="aim-hint"></div>
+  <div id="reticle"><div id="reticle-inner"></div></div>
+  <div id="tap-prompt">Tap anywhere to name a planet</div>
+  <div id="calib-hint">① Aim your phone at the marker at the front of the room, then calibrate</div>
+  <button id="calibrate-btn">⊕ Calibrate aim</button>
+</div>
+
+<div id="name-panel">
+  <div id="name-target">Name this planet</div>
+  <input id="name-input" maxlength="8" placeholder="8 letters" autocomplete="off"
+         autocapitalize="characters" spellcheck="false" style="text-transform:uppercase">
+  <div id="tier-row">
+    <button class="tier-btn selected" data-tier="forever">Forever<small>stays every visit</small></button>
+    <button class="tier-btn" data-tier="once">Just once<small>fades after today</small></button>
+  </div>
+  <button id="claim-btn">Claim this planet</button>
+  <button id="cancel-btn">Cancel</button>
+</div>
+
+<div id="toast"></div>
+<div id="dbg" style="position:fixed;bottom:8px;left:8px;font-size:12px;font-family:monospace;opacity:0.7;color:#0ff;z-index:50"></div>
+
+<script>
+let ws = null, playerId = null, playerColor = 'white';
+let calibratedAlpha = null, calibratedPitch = null, lastAlpha = 0, lastPitch = 0, aimInterval = null;
+let selectedTier = 'forever', naming = false, roomWasOffline = false;
+let currentTarget = { name: '', claimed: false };
+
+const permissionScreen = document.getElementById('permission-screen');
+const waitingScreen    = document.getElementById('waiting-screen');
+const tapArea          = document.getElementById('tap-area');
+const statusEl         = document.getElementById('status');
+const aimHint          = document.getElementById('aim-hint');
+const reticle          = document.getElementById('reticle');
+const reticleInner     = document.getElementById('reticle-inner');
+const calibrateBtn     = document.getElementById('calibrate-btn');
+const calibHint        = document.getElementById('calib-hint');
+const namePanel        = document.getElementById('name-panel');
+const nameTarget       = document.getElementById('name-target');
+const nameInput        = document.getElementById('name-input');
+const claimBtn         = document.getElementById('claim-btn');
+const cancelBtn        = document.getElementById('cancel-btn');
+const toastEl          = document.getElementById('toast');
+
+function showScreen(name) {
+  permissionScreen.style.display = name === 'permission' ? 'flex'  : 'none';
+  waitingScreen.style.display    = name === 'waiting'    ? 'block' : 'none';
+  tapArea.style.display          = name === 'game'       ? 'flex'  : 'none';
+}
+function toast(text) {
+  toastEl.textContent = text;
+  toastEl.classList.add('show');
+  setTimeout(() => toastEl.classList.remove('show'), 1800);
+}
+
+document.getElementById('allow-btn').addEventListener('click', async () => {
+  if (typeof DeviceOrientationEvent !== 'undefined' &&
+      typeof DeviceOrientationEvent.requestPermission === 'function') {
+    const result = await DeviceOrientationEvent.requestPermission();
+    if (result !== 'granted') { alert('Motion access is required. Please allow it and reload.'); return; }
+  }
+  startGyroscope();
+  showScreen('waiting');
+  connectWebSocket();
+});
+
+let vAlpha = 0, vPitch = 0, lastSampleT = 0;   // angular velocity (deg/s) for lag prediction
+function startGyroscope() {
+  window.addEventListener('deviceorientation', (e) => {
+    if (e.alpha === null) return;
+    const now = performance.now();
+    const newPitch = e.beta - 90;
+    if (lastSampleT) {
+      const dt = (now - lastSampleT) / 1000;
+      if (dt > 0.001 && dt < 0.5) {
+        let dA = ((e.alpha - lastAlpha) % 360 + 540) % 360 - 180;  // wrap-safe
+        vAlpha += ((dA / dt) - vAlpha) * 0.3;                      // light smoothing
+        vPitch += (((newPitch - lastPitch) / dt) - vPitch) * 0.3;
+      }
+    }
+    lastSampleT = now;
+    lastAlpha = e.alpha;
+    lastPitch = newPitch;
+    reticle.classList.toggle('active', calibratedAlpha !== null);
+  }, true);
+}
+function buzz(pattern) { if (navigator.vibrate) navigator.vibrate(pattern); }
+
+let calibrating = false;
+calibrateBtn.addEventListener('click', () => {
+  if (calibrating) return;
+  calibrating = true;
+  const samples = [];
+  const pitchSamples = [];
+  const SAMPLE_MS = 700;
+  const start = Date.now();
+  calibrateBtn.textContent = 'Hold steady…';
+  reticle.classList.add('flash');
+  const sampler = setInterval(() => {
+    samples.push(lastAlpha);
+    pitchSamples.push(lastPitch);
+    if (Date.now() - start >= SAMPLE_MS) {
+      clearInterval(sampler);
+      calibratedAlpha = circularMeanDeg(samples);
+      calibratedPitch = pitchSamples.reduce((a, b) => a + b, 0) / pitchSamples.length;
+      calibrating = false;
+      reticle.classList.remove('flash');
+      calibrateBtn.textContent = '⊕ Re-calibrate';
+      calibHint.style.display = 'none';
+      toast('Aim calibrated');
+    }
+  }, 40);
+});
+
+function circularMeanDeg(anglesDeg) {
+  let sx = 0, sy = 0;
+  for (const a of anglesDeg) { const r = a * Math.PI / 180; sx += Math.cos(r); sy += Math.sin(r); }
+  return ((Math.atan2(sy, sx) * 180 / Math.PI) + 360) % 360;
+}
+
+function getAdjustedYaw() {
+  if (calibratedAlpha === null) return lastAlpha;
+  return ((lastAlpha - calibratedAlpha) + 360) % 360;
+}
+
+function getAdjustedPitch() {
+  if (calibratedPitch === null) return lastPitch;
+  return lastPitch - calibratedPitch;
+}
+
+function connectWebSocket() {
+  ws = new WebSocket(`wss://${location.host}`);
+  ws.addEventListener('open', () => {
+    console.log('Connected to ForeverStar server');
+    ws.send(JSON.stringify({ type: 'HELLO' }));   // cloud relay assigns on first message
+  });
+  ws.addEventListener('message', (event) => {
+    const msg = JSON.parse(event.data);
+    if (msg.type === 'ASSIGN') {
+      playerId = msg.playerId; playerColor = msg.color;
+      reticle.style.borderColor = playerColor;
+      reticleInner.style.background = playerColor;
+      namePanel.style.color = playerColor;
+      document.body.style.background = `radial-gradient(ellipse at center, ${playerColor}18 0%, #0a0a0f 70%)`;
+      statusEl.textContent = `Player ${playerId} · Aim & Tap`;
+      showScreen('game');
+      startSendingAim();
+    }
+    if (msg.type === 'TARGET') {
+      currentTarget = { name: msg.name || '', claimed: !!msg.claimed };
+      if (!naming) {
+        if (!currentTarget.name) aimHint.textContent = 'Aiming at an unnamed planet';
+        else aimHint.textContent = currentTarget.claimed
+          ? `“${currentTarget.name}” — taken forever` : `“${currentTarget.name}”`;
+      }
+    }
+    if (msg.type === 'CLAIM_RESULT') {
+      if (msg.success) { toast('✦ Planet named ✦'); closeNamePanel(); }
+      else { toast('That planet is already taken'); claimBtn.disabled = false; claimBtn.textContent = 'Claim this planet'; }
+    }
+    if (msg.type === 'FULL') { waitingScreen.textContent = 'Room is full. Please wait…'; }
+    if (msg.type === 'ROOM') {
+      if (!msg.online) toast('Installation is offline right now');
+      else if (roomWasOffline) toast('Installation connected ✦');
+      roomWasOffline = !msg.online;
+    }
+  });
+  ws.addEventListener('close', () => {
+    stopSendingAim();
+    showScreen('waiting');
+    waitingScreen.textContent = 'Connection lost. Reconnecting…';
+    setTimeout(connectWebSocket, 2000);
+  });
+}
+
+function startSendingAim() {
+  aimInterval = setInterval(() => {
+    if (naming) return;
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    ws.send(JSON.stringify({ type: 'AIM', yaw: (360 - getAdjustedYaw()) % 360, pitch: getAdjustedPitch(),
+                             vyaw: -vAlpha, vpitch: vPitch }));  // vyaw negated: yaw is mirrored above
+    document.getElementById('dbg').textContent = 'yaw ' + getAdjustedYaw().toFixed(0) + '  pitch ' + getAdjustedPitch().toFixed(0) + '  (cal:' + (calibratedPitch===null?'NO':'yes') + ')';
+  }, 50);
+}
+function stopSendingAim() { clearInterval(aimInterval); }
+
+tapArea.addEventListener('touchstart', (e) => {
+  if (e.target === calibrateBtn) return;
+  e.preventDefault();
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  ws.send(JSON.stringify({ type: 'TAP' }));
+  buzz(25);                                  // instant feedback before the server replies
+  reticle.classList.add('flash');
+  setTimeout(() => reticle.classList.remove('flash'), 150);
+  openNamePanel();
+}, { passive: false });
+
+function openNamePanel() {
+  naming = true;
+  if (currentTarget.claimed && currentTarget.name) nameTarget.textContent = `“${currentTarget.name}” is taken — pick another planet`;
+  else if (currentTarget.name) nameTarget.textContent = `Currently “${currentTarget.
