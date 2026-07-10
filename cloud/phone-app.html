@@ -158,15 +158,21 @@ function toast(text) {
   setTimeout(() => toastEl.classList.remove('show'), 1800);
 }
 
-document.getElementById('allow-btn').addEventListener('click', async () => {
-  if (typeof DeviceOrientationEvent !== 'undefined' &&
-      typeof DeviceOrientationEvent.requestPermission === 'function') {
-    const result = await DeviceOrientationEvent.requestPermission();
-    if (result !== 'granted') { alert('Motion access is required. Please allow it and reload.'); return; }
-  }
-  startGyroscope();
-  showScreen('waiting');
-  connectWebSocket();
+document.getElementById('allow-btn').addEventListener('click', () => {
+  const proceed = () => { startGyroscope(); showScreen('waiting'); connectWebSocket(); };
+  try {
+    if (typeof DeviceOrientationEvent !== 'undefined' &&
+        typeof DeviceOrientationEvent.requestPermission === 'function') {
+      DeviceOrientationEvent.requestPermission()
+        .then((result) => {
+          if (result === 'granted') proceed();
+          else alert('Motion was blocked. Close this tab, reopen the link, and tap Allow.');
+        })
+        .catch(() => proceed());   // permission API unavailable mid-flight: join anyway
+    } else {
+      proceed();                   // Android / desktop: no permission prompt needed
+    }
+  } catch (e) { proceed(); }
 });
 
 let vAlpha = 0, vPitch = 0, lastSampleT = 0;   // angular velocity (deg/s) for lag prediction
@@ -303,4 +309,41 @@ tapArea.addEventListener('touchstart', (e) => {
 function openNamePanel() {
   naming = true;
   if (currentTarget.claimed && currentTarget.name) nameTarget.textContent = `“${currentTarget.name}” is taken — pick another planet`;
-  else if (currentTarget.name) nameTarget.textContent = `Currently “${currentTarget.
+  else if (currentTarget.name) nameTarget.textContent = `Currently “${currentTarget.name}” — rename it`;
+  else nameTarget.textContent = 'Name this planet';
+  namePanel.classList.add('open');
+  setTimeout(() => nameInput.focus(), 50);
+}
+function closeNamePanel() {
+  naming = false;
+  namePanel.classList.remove('open');
+  nameInput.value = '';
+  claimBtn.disabled = false;
+  claimBtn.textContent = 'Claim this planet';
+}
+
+document.querySelectorAll('.tier-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tier-btn').forEach((b) => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    selectedTier = btn.dataset.tier;
+  });
+});
+
+claimBtn.addEventListener('click', () => {
+  const name = nameInput.value.trim();
+  if (!name) { toast('Type a name first'); return; }
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  ws.send(JSON.stringify({ type: 'CLAIM', name, tier: selectedTier }));
+  buzz([20, 40, 60]);
+  claimBtn.disabled = true;
+  claimBtn.textContent = 'Claiming…';
+});
+
+cancelBtn.addEventListener('click', () => {
+  if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'CANCEL' }));
+  closeNamePanel();
+});
+</script>
+</body>
+</html>
